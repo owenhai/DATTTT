@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Điều Khiển Phân Tích Thị Trường Tuyển Dụng IT</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.29.1.min.js"></script>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: rgba(30, 41, 59, 0.7);
+            --bg-card-hover: rgba(30, 41, 59, 0.9);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-purple: #818cf8;
+            --accent-pink: #f43f5e;
+            --accent-green: #34d399;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+            padding: 28px 24px;
+            margin: 20px;
+            border-radius: 18px;
+            text-align: center;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #c7d2fe;
+            font-size: 1rem;
+        }
+
+        /* Container & Layout */
+        .container {
+            display: flex;
+            gap: 20px;
+            padding: 0 20px 30px 20px;
+            flex: 1;
+        }
+
+        /* Sidebar Filters */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: fit-content;
+        }
+
+        .sidebar h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .filter-group select, .filter-group input {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .filter-group select:focus, .filter-group input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* KPI Cards Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .kpi-title {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin-top: 6px;
+        }
+
+        /* Tabs Header */
+        .tabs-header {
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            color: var(--text-primary);
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+        }
+
+        /* Tab Content Panels */
+        .tab-panel {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .tab-panel.active {
+            display: flex;
+        }
+
+        /* Chart Section Cards */
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .chart-card h3 {
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* Table Styling */
+        .table-container {
+            overflow-x: auto;
+            max-height: 400px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--accent-blue);
+            font-weight: 700;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Detail Card */
+        .job-detail-box {
+            background: #1e293b;
+            border-left: 4px solid #6366f1;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-right: 6px;
+            margin-bottom: 6px;
+        }
+
+        /* Form Inputs & Buttons */
+        .btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        textarea {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        /* Status Pill */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            width: fit-content;
+        }
+
+        .status-pill.success {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+
+        .status-pill.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .charts-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>Bảng Điều Khiển </h1>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Sidebar Filters -->
+        <div class="sidebar">
+            <h2>Bộ Lọc Dữ Liệu</h2>
+
+            <div class="filter-group">
+                <label for="filter-role">Vị trí Công việc</label>
+                <select id="filter-role" onchange="applyFilters()">
+                    <option value="Tất cả">Tất cả</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filter-location">Địa điểm Làm việc</label>
+                <select id="filter-location" onchange="applyFilters()">
+                    <option value="Tất cả">Tất cả</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filter-exp">Cấp bậc Kinh nghiệm</label>
+                <select id="filter-exp" onchange="applyFilters()">
+                    <option value="Tất cả">Tất cả</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filter-skill">Kỹ năng Công nghệ</label>
+                <select id="filter-skill" onchange="applyFilters()">
+                    <option value="Tất cả">Tất cả</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filter-search">Tìm kiếm Từ khóa / Công ty</label>
+                <input type="text" id="filter-search" placeholder="Nhập từ khóa..." oninput="applyFilters()">
+            </div>
+
+            <div class="filter-group" style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <button class="btn" onclick="exportToExcel()" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    📊 Xuất File Excel (.xlsx)
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- KPI Cards Grid -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">Tổng Tin Tuyển Dụng</div>
+                    <div class="kpi-value" id="kpi-jobs" style="color: var(--accent-blue);">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Công Ty Tuyển Dụng</div>
+                    <div class="kpi-value" id="kpi-companies" style="color: var(--accent-blue);">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Lương Trung Bình (USD/tháng)</div>
+                    <div class="kpi-value" id="kpi-salary" style="color: var(--accent-blue);">$0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Kỹ Năng Đón Nhất</div>
+                    <div class="kpi-value" id="kpi-top-skill" style="color: var(--accent-pink);">N/A</div>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="switchTab('tab1')">Xu hướng Kỹ năng</button>
+                <button class="tab-btn" onclick="switchTab('tab2')">Phân tích Mức lương</button>
+                <button class="tab-btn" onclick="switchTab('tab3')">Nhu cầu Theo Khu vực</button>
+                <button class="tab-btn" onclick="switchTab('tab4')">Tra cứu Bài đăng</button>
+                <button class="tab-btn" onclick="switchTab('tab5')">Quản trị CSDL & Scraper</button>
+            </div>
+
+            <!-- TAB 1: Xu hướng Kỹ năng -->
+            <div id="tab1" class="tab-panel active">
+                <div class="chart-card">
+                    <h3>Top Kỹ Năng Công Nghệ Được Săn Đón Nhất</h3>
+                    <div id="chart-top-skills" style="height: 380px;"></div>
+                </div>
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <h3>Phân bố Kỹ năng theo Danh mục</h3>
+                        <div id="chart-skill-categories" style="height: 350px;"></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Ma Trận Tương Quan Kỹ Năng</h3>
+                        <div id="chart-skill-cooccurrence" style="height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Phân tích Mức lương -->
+            <div id="tab2" class="tab-panel">
+                <div class="chart-card">
+                    <h3>Dải Lương Trung Bình Theo Vị Trí Công Việc (USD / tháng)</h3>
+                    <div id="chart-salary-role" style="height: 400px;"></div>
+                </div>
+                <div class="chart-card">
+                    <h3>Mức Lương Trung Bình Theo Cấp Bậc Kinh Nghiệm</h3>
+                    <div id="chart-salary-exp" style="height: 350px;"></div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Nhu cầu Theo Khu vực -->
+            <div id="tab3" class="tab-panel">
+                <div class="chart-card">
+                    <h3>Tỷ Trọng Nhu Cầu Tuyển Dụng Theo Thành Phố</h3>
+                    <div id="chart-location-pie" style="height: 420px;"></div>
+                </div>
+            </div>
+
+            <!-- TAB 4: Tra cứu Bài đăng -->
+            <div id="tab4" class="tab-panel">
+                <div class="chart-card">
+                    <h3 id="job-count-heading">Danh Sách Tin Tuyển Dụng</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Tiêu đề công việc</th>
+                                    <th>Công ty</th>
+                                    <th>Địa điểm</th>
+                                    <th>Vị trí chuẩn</th>
+                                    <th>Mức lương</th>
+                                    <th>Kinh nghiệm</th>
+                                </tr>
+                            </thead>
+                            <tbody id="jobs-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3>Xem Chi Tiết Bài Tuyển Dụng Cụ Thể</h3>
+                    <div class="filter-group">
+                        <label for="select-job-detail">Chọn một bài tuyển dụng:</label>
+                        <select id="select-job-detail" onchange="renderJobDetail()"></select>
+                    </div>
+
+                    <div id="job-detail-container" class="job-detail-box" style="display: none;">
+                        <h3 id="detail-title" style="color: var(--accent-blue);"></h3>
+                        <p id="detail-company" style="color: var(--text-secondary);"></p>
+                        <p id="detail-salary" style="color: var(--accent-green); font-weight: 600;"></p>
+                        <p id="detail-link"></p>
+                        <div>
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Kỹ năng trích xuất:</span>
+                            <div id="detail-skills" style="margin-top: 8px;"></div>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Mô tả công việc:</span>
+                            <textarea id="detail-desc" rows="6" readonly style="margin-top: 6px;"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: Quản trị CSDL & Scraper -->
+            <div id="tab5" class="tab-panel">
+                <div class="chart-card">
+                    <h3>Trạng Thái Kết Nối CSDL</h3>
+                    <div id="db-status-pill" class="status-pill success">Kiểm tra kết nối...</div>
+                </div>
+
+                <div class="chart-card" style="display: flex; flex-direction: column; gap: 14px;">
+                    <h3>Tự Động Cào Dữ Liệu Từ Link URL</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Dán bất kỳ link bài tuyển dụng IT nào (mỗi link một dòng). Hệ thống sẽ kết nối tải HTML, bóc tách tên công ty, tiêu đề, dải lương và kỹ năng lưu vào CSDL:</p>
+                    <textarea id="input-urls" rows="4" placeholder="https://itviec.com/it-jobs/python&#10;https://www.topcv.vn/tim-viec-lam-data-engineer"></textarea>
+                    <button class="btn" onclick="scrapeUrls()">Tự Động Cào & Trích Xuất Dữ Liệu Từ Link</button>
+                    <div id="scrape-msg" style="font-size: 0.9rem; font-weight: 600;"></div>
+                </div>
+
+                <div class="chart-card" style="display: flex; flex-direction: column; gap: 14px;">
+                    <h3>Chạy Lại Quy Trình ETL Pipeline</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Xóa CSDL cũ và khởi chạy lại toàn bộ luồng Thu thập ➔ Làm sạch ➔ Chuẩn hóa ➔ Phân tích:</p>
+                    <button class="btn" style="background: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%);" onclick="runPipeline()">Chạy Lại Toàn Bộ ETL Pipeline</button>
+                    <div id="pipeline-msg" style="font-size: 0.9rem; font-weight: 600;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rawApiData = null;
+        let filteredJobs = [];
+
+        // App Init
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchData();
+        });
+
+        async function fetchData() {
+            try {
+                const res = await fetch('/api/data');
+                const data = await res.json();
+                if (data.success) {
+                    rawApiData = data;
+                    populateDropdowns();
+                    applyFilters();
+                    updateDbStatus(data.isFallback);
+                }
+            } catch (e) {
+                console.error("Lỗi khi tải dữ liệu từ API:", e);
+            }
+        }
+
+        function updateDbStatus(isFallback) {
+            const pill = document.getElementById('db-status-pill');
+            if (isFallback) {
+                pill.className = 'status-pill warning';
+                pill.innerText = 'Chế độ hiện tại: SQLite Database Fallback (tech_jobs_fallback.db)';
+            } else {
+                pill.className = 'status-pill success';
+                pill.innerText = 'Chế độ hiện tại: MySQL Database (tech_jobs_db) Đang Hoạt Động';
+            }
+        }
+
+        function populateDropdowns() {
+            if (!rawApiData) return;
+            const jobs = rawApiData.jobs;
+            const skills = rawApiData.skills;
+
+            // Roles
+            const roles = ["Tất cả", ...new Set(jobs.map(j => j.normalized_title).filter(Boolean))].sort();
+            fillSelect('filter-role', roles);
+
+            // Locations
+            const locs = ["Tất cả", ...new Set(jobs.map(j => j.location).filter(Boolean))].sort();
+            fillSelect('filter-location', locs);
+
+            // Exp
+            const exps = ["Tất cả", ...new Set(jobs.map(j => j.experience_level).filter(Boolean))].sort();
+            fillSelect('filter-exp', exps);
+
+            // Skills
+            const sks = ["Tất cả", ...new Set(skills.map(s => s.skill_name).filter(Boolean))].sort();
+            fillSelect('filter-skill', sks);
+        }
+
+        function fillSelect(id, list) {
+            const sel = document.getElementById(id);
+            const currVal = sel.value;
+            sel.innerHTML = list.map(item => `<option value="${item}">${item}</option>`).join('');
+            if (list.includes(currVal)) sel.value = currVal;
+        }
+
+        function applyFilters() {
+            if (!rawApiData) return;
+            const role = document.getElementById('filter-role').value;
+            const location = document.getElementById('filter-location').value;
+            const exp = document.getElementById('filter-exp').value;
+            const skill = document.getElementById('filter-skill').value;
+            const keyword = document.getElementById('filter-search').value.toLowerCase().trim();
+
+            let result = [...rawApiData.jobs];
+
+            if (role !== "Tất cả") result = result.filter(j => j.normalized_title === role);
+            if (location !== "Tất cả") result = result.filter(j => j.location === location);
+            if (exp !== "Tất cả") result = result.filter(j => j.experience_level === exp);
+            if (skill !== "Tất cả") {
+                const jobIdsWithSkill = new Set(rawApiData.skills.filter(s => s.skill_name === skill).map(s => s.job_id));
+                result = result.filter(j => jobIdsWithSkill.has(j.job_id));
+            }
+            if (keyword) {
+                result = result.filter(j => 
+                    (j.title && j.title.toLowerCase().includes(keyword)) ||
+                    (j.company_name && j.company_name.toLowerCase().includes(keyword)) ||
+                    (j.description && j.description.toLowerCase().includes(keyword))
+                );
+            }
+
+            filteredJobs = result;
+
+            // Recalculate KPIs for filtered jobs
+            renderKpis();
+            renderCharts();
+            renderTable();
+        }
+
+        function renderKpis() {
+            const totalJobs = filteredJobs.length;
+            const uniqueCompanies = new Set(filteredJobs.map(j => j.company_name)).size;
+
+            const validSalaries = filteredJobs.filter(j => j.salary_min !== null && j.salary_max !== null);
+            let avgSalary = 0;
+            if (validSalaries.length > 0) {
+                avgSalary = Math.round(validSalaries.reduce((sum, j) => sum + (j.salary_min + j.salary_max) / 2.0, 0) / validSalaries.length);
+            }
+
+            // Top skill for filtered jobs
+            const filteredJobIds = new Set(filteredJobs.map(j => j.job_id));
+            const filteredSkills = rawApiData.skills.filter(s => filteredJobIds.has(s.job_id));
+            const skillCounts = {};
+            filteredSkills.forEach(s => skillCounts[s.skill_name] = (skillCounts[s.skill_name] || 0) + 1);
+
+            let topSkill = "N/A";
+            let maxC = 0;
+            for (const [k, v] of Object.entries(skillCounts)) {
+                if (v > maxC) { maxC = v; topSkill = k; }
+            }
+
+            document.getElementById('kpi-jobs').innerText = totalJobs;
+            document.getElementById('kpi-companies').innerText = uniqueCompanies;
+            document.getElementById('kpi-salary').innerText = `$${avgSalary.toLocaleString()}`;
+            document.getElementById('kpi-top-skill').innerText = topSkill;
+        }
+
+        function renderCharts() {
+            const layoutDark = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#f8fafc', family: 'Inter' },
+                margin: { t: 30, b: 40, l: 120, r: 20 }
+            };
+
+            const filteredJobIds = new Set(filteredJobs.map(j => j.job_id));
+            const filteredSkills = rawApiData.skills.filter(s => filteredJobIds.has(s.job_id));
+
+            // Chart 1: Top Skills Bar Chart
+            const skillCounts = {};
+            const skillCats = {};
+            filteredSkills.forEach(s => {
+                skillCounts[s.skill_name] = (skillCounts[s.skill_name] || 0) + 1;
+                skillCats[s.skill_name] = s.skill_category;
+            });
+
+            const sortedSkills = Object.keys(skillCounts)
+                .map(name => ({ name, count: skillCounts[name], category: skillCats[name] }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 15);
+
+            const topSkillNames = sortedSkills.map(s => s.name).reverse();
+            const topSkillCounts = sortedSkills.map(s => s.count).reverse();
+
+            Plotly.newPlot('chart-top-skills', [{
+                type: 'bar',
+                x: topSkillCounts,
+                y: topSkillNames,
+                orientation: 'h',
+                marker: { color: '#38bdf8' }
+            }], { ...layoutDark, margin: { t: 20, b: 40, l: 140, r: 20 } }, { responsive: true });
+
+            // Chart 2: Skill Categories Pie
+            const catCounts = {};
+            sortedSkills.forEach(s => {
+                catCounts[s.category] = (catCounts[s.category] || 0) + s.count;
+            });
+
+            Plotly.newPlot('chart-skill-categories', [{
+                type: 'pie',
+                labels: Object.keys(catCounts),
+                values: Object.values(catCounts),
+                hole: 0.4,
+                marker: { colors: ['#38bdf8', '#818cf8', '#f43f5e', '#34d399', '#fbbf24'] }
+            }], { ...layoutDark, margin: { t: 20, b: 20, l: 20, r: 20 } }, { responsive: true });
+
+            // Chart 3: Co-occurrence Heatmap
+            const top8 = sortedSkills.map(s => s.name).slice(0, 8);
+            const matrix = Array.from({ length: top8.length }, () => Array(top8.length).fill(0));
+            
+            const jobSkillsMap = new Map();
+            filteredSkills.forEach(s => {
+                if (top8.includes(s.skill_name)) {
+                    if (!jobSkillsMap.has(s.job_id)) jobSkillsMap.set(s.job_id, new Set());
+                    jobSkillsMap.get(s.job_id).add(s.skill_name);
+                }
+            });
+
+            jobSkillsMap.forEach(skillSet => {
+                const arr = Array.from(skillSet);
+                for (let i = 0; i < arr.length; i++) {
+                    for (let j = 0; j < arr.length; j++) {
+                        if (i !== j) {
+                            const idx1 = top8.indexOf(arr[i]);
+                            const idx2 = top8.indexOf(arr[j]);
+                            if (idx1 !== -1 && idx2 !== -1) matrix[idx1][idx2] += 1;
+                        }
+                    }
+                }
+            });
+
+            Plotly.newPlot('chart-skill-cooccurrence', [{
+                type: 'heatmap',
+                x: top8,
+                y: top8,
+                z: matrix,
+                colorscale: 'Viridis'
+            }], { ...layoutDark, margin: { t: 20, b: 40, l: 100, r: 20 } }, { responsive: true });
+
+            // Chart 4: Salary by Role
+            const roleSalaries = {};
+            filteredJobs.filter(j => j.salary_min !== null).forEach(j => {
+                const r = j.normalized_title || 'Software Engineer';
+                if (!roleSalaries[r]) roleSalaries[r] = { mins: [], maxs: [] };
+                roleSalaries[r].mins.push(j.salary_min);
+                roleSalaries[r].maxs.push(j.salary_max);
+            });
+
+            const rolesArr = Object.keys(roleSalaries);
+            const avgMins = rolesArr.map(r => Math.round(roleSalaries[r].mins.reduce((a,b)=>a+b,0)/roleSalaries[r].mins.length));
+            const avgMaxs = rolesArr.map(r => Math.round(roleSalaries[r].maxs.reduce((a,b)=>a+b,0)/roleSalaries[r].maxs.length));
+
+            Plotly.newPlot('chart-salary-role', [
+                { x: rolesArr, y: avgMins, name: 'Lương Tối Thiểu', type: 'bar', marker: { color: '#38bdf8' } },
+                { x: rolesArr, y: avgMaxs, name: 'Lương Tối Đa', type: 'bar', marker: { color: '#818cf8' } }
+            ], { ...layoutDark, barmode: 'group', margin: { t: 20, b: 80, l: 50, r: 20 } }, { responsive: true });
+
+            // Chart 5: Salary by Experience
+            const expSalaries = {};
+            filteredJobs.filter(j => j.salary_min !== null).forEach(j => {
+                const e = j.experience_level || 'Not Specified';
+                if (!expSalaries[e]) expSalaries[e] = [];
+                expSalaries[e].push((j.salary_min + j.salary_max) / 2.0);
+            });
+
+            const expsArr = Object.keys(expSalaries);
+            const avgExps = expsArr.map(e => Math.round(expSalaries[e].reduce((a,b)=>a+b,0)/expSalaries[e].length));
+
+            Plotly.newPlot('chart-salary-exp', [{
+                x: expsArr,
+                y: avgExps,
+                type: 'bar',
+                marker: { color: '#34d399' }
+            }], { ...layoutDark, margin: { t: 20, b: 60, l: 50, r: 20 } }, { responsive: true });
+
+            // Chart 6: Location Pie
+            const locCounts = {};
+            filteredJobs.forEach(j => {
+                const l = j.location || 'Khác';
+                locCounts[l] = (locCounts[l] || 0) + 1;
+            });
+
+            Plotly.newPlot('chart-location-pie', [{
+                type: 'pie',
+                labels: Object.keys(locCounts),
+                values: Object.values(locCounts),
+                hole: 0.4,
+                marker: { colors: ['#38bdf8', '#818cf8', '#f43f5e', '#34d399'] }
+            }], { ...layoutDark, margin: { t: 20, b: 20, l: 20, r: 20 } }, { responsive: true });
+        }
+
+        function renderTable() {
+            document.getElementById('job-count-heading').innerText = `Danh Sách Tin Tuyển Dụng (${filteredJobs.length} Kết Quả)`;
+            const tbody = document.getElementById('jobs-table-body');
+            
+            tbody.innerHTML = filteredJobs.map(j => `
+                <tr>
+                    <td>${j.job_id}</td>
+                    <td><strong>${j.title}</strong></td>
+                    <td>${j.company_name}</td>
+                    <td>${j.location}</td>
+                    <td><span class="badge">${j.normalized_title}</span></td>
+                    <td style="color: var(--accent-green); font-weight: 600;">${j.raw_salary}</td>
+                    <td>${j.experience_level}</td>
+                </tr>
+            `).join('');
+
+            // Detail Select
+            const detailSel = document.getElementById('select-job-detail');
+            detailSel.innerHTML = filteredJobs.map(j => 
+                `<option value="${j.job_id}">${j.job_id} - ${j.title} @ ${j.company_name} (${j.location})</option>`
+            ).join('');
+
+            renderJobDetail();
+        }
+
+        function renderJobDetail() {
+            const jobId = parseInt(document.getElementById('select-job-detail').value, 10);
+            if (!jobId) {
+                document.getElementById('job-detail-container').style.display = 'none';
+                return;
+            }
+
+            const job = rawApiData.jobs.find(j => j.job_id === jobId);
+            if (!job) return;
+
+            document.getElementById('job-detail-container').style.display = 'flex';
+            document.getElementById('detail-title').innerText = job.title;
+            document.getElementById('detail-company').innerText = `Công ty: ${job.company_name} | Địa điểm: ${job.location} | Cấp bậc: ${job.experience_level}`;
+            
+            const salText = job.salary_min ? `(Quy đổi USD: $${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}/tháng)` : '';
+            document.getElementById('detail-salary').innerHTML = `Mức lương hiển thị: <b>${job.raw_salary}</b> <i>${salText}</i>`;
+            
+            document.getElementById('detail-link').innerHTML = `Link gốc: <a href="${job.source_url || '#'}" target="_blank" style="color: var(--accent-purple);">${job.source_platform || 'Link web'}</a>`;
+
+            const specificSkills = rawApiData.skills.filter(s => s.job_id === jobId);
+            document.getElementById('detail-skills').innerHTML = specificSkills.map(s => 
+                `<span class="badge">${s.skill_name} (${s.skill_category})</span>`
+            ).join('') || '<span style="color: var(--text-secondary);">Chưa phát hiện kỹ năng</span>';
+
+            document.getElementById('detail-desc').value = job.description || '';
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+
+            // Trigger window resize so Plotly charts render nicely
+            window.dispatchEvent(new Event('resize'));
+        }
+
+        async function scrapeUrls() {
+            const text = document.getElementById('input-urls').value.trim();
+            const urls = text.split('\n').map(u => u.trim()).filter(u => u.startsWith('http'));
+            const msgDiv = document.getElementById('scrape-msg');
+
+            if (urls.length === 0) {
+                msgDiv.style.color = '#f43f5e';
+                msgDiv.innerText = 'Vui lòng nhập ít nhất 1 link URL hợp lệ (bắt đầu bằng http/https).';
+                return;
+            }
+
+            msgDiv.style.color = '#38bdf8';
+            msgDiv.innerText = `Đang kết nối web và cào dữ liệu từ ${urls.length} link URL...`;
+
+            try {
+                const res = await fetch('/api/scrape-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msgDiv.style.color = '#34d399';
+                    msgDiv.innerText = data.message;
+                    await fetchData();
+                } else {
+                    msgDiv.style.color = '#f43f5e';
+                    msgDiv.innerText = data.error || 'Lỗi khi cào dữ liệu.';
+                }
+            } catch (e) {
+                msgDiv.style.color = '#f43f5e';
+                msgDiv.innerText = 'Lỗi kết nối tới Server.';
+            }
+        }
+
+        async function runPipeline() {
+            const msgDiv = document.getElementById('pipeline-msg');
+            msgDiv.style.color = '#38bdf8';
+            msgDiv.innerText = 'Đang chạy lại toàn bộ luồng ETL Pipeline (Thu thập ➔ Làm sạch ➔ Lưu CSDL)...';
+
+            try {
+                const res = await fetch('/api/pipeline/run', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    msgDiv.style.color = '#34d399';
+                    msgDiv.innerText = data.message;
+                    await fetchData();
+                } else {
+                    msgDiv.style.color = '#f43f5e';
+                    msgDiv.innerText = data.error || 'Lỗi khi chạy Pipeline.';
+                }
+            } catch (e) {
+                msgDiv.style.color = '#f43f5e';
+                msgDiv.innerText = 'Lỗi kết nối tới Server.';
+            }
+        }
+
+        function exportToExcel() {
+            window.open('/api/export/excel', '_blank');
+        }
+    </script>
+</body>
+</html>
