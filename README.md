@@ -1,4 +1,4 @@
-# Dự Án Phân Tích Thị Trường Tuyển Dụng Công Nghệ (Tech Job Analytics - Node.js)
+# Nghiên cứu và xây dựng hệ thống thu thập, phân tích dữ liệu tuyển dụng ngành Công nghệ thông tin.
 
 Hệ thống phân tích thị trường tuyển dụng IT End-to-End xây dựng trên nền **Node.js**, kết nối CSDL MySQL / SQLite Fallback, tự động thu thập, chuẩn hóa dữ liệu ETL và hiển thị Bảng điều khiển (Web Dashboard SPA) trực quan tương tác.
 
