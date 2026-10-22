@@ -77,7 +77,48 @@ class SalaryNormalizer {
             return { salary_min: null, salary_max: null, currency: "USD" };
         }
 
-        const rawClean = rawSalary.replace(/,/g, '').replace(/\./g, '').trim().toLowerCase();
+        const rawClean = rawSalary
+            .replace(/,(?=\d{3}\b)/g, '')
+            .replace(/\.(?=\d{3}\b)/g, '')
+            .replace(/\.(?:00|0)\b/g, '')
+            .trim()
+            .toLowerCase();
+        const amount = value => {
+            const numeric = parseFloat(value.replace('k', '000'));
+            return Number.isFinite(numeric) ? numeric : null;
+        };
+        const currencyMatch = rawClean.match(/([$€£])|\b(usd|eur|gbp)\b/i);
+        const currency = currencyMatch
+            ? ({ '$': 'USD', '€': 'EUR', '£': 'GBP', usd: 'USD', eur: 'EUR', gbp: 'GBP' }[currencyMatch[1] || currencyMatch[2].toLowerCase()])
+            : 'USD';
+        const conversionRate = { USD: 1, EUR: 1.09, GBP: 1.27 }[currency];
+        const range = rawClean.match(/([$€£])?\s*(\d+(?:k)?)\s*(?:-|to)\s*([$€£])?\s*(\d+(?:k)?)/i);
+        if (range) {
+            const min = amount(range[2]);
+            const max = amount(range[4]);
+            const annual = /per year|annually|a year|\/year/i.test(rawClean) || Math.max(min, max) > 10000;
+            if (min !== null && max !== null) {
+                return {
+                    salary_min: Math.round(Math.min(min, max) * conversionRate / (annual ? 12 : 1)),
+                    salary_max: Math.round(Math.max(min, max) * conversionRate / (annual ? 12 : 1)),
+                    currency: "USD"
+                };
+            }
+        }
+
+        const singleUsd = rawClean.match(/([$€£]|usd|eur|gbp)\s?(\d+(?:k)?)(?:\s*(?:per year|annually|a year|\/year|per month|monthly))?/i);
+        if (singleUsd && !rawClean.includes('-') && !rawClean.includes(' to ')) {
+            if (!/per year|annually|a year|\/year|per month|monthly|per hour|hourly/i.test(rawClean)) {
+                return { salary_min: null, salary_max: null, currency: "USD" };
+            }
+            const value = amount(singleUsd[2]);
+            if (value !== null) {
+                const annual = /per year|annually|a year|\/year/i.test(rawClean) || value > 10000;
+                const hourly = /per hour|hourly/i.test(rawClean);
+                const monthlyValue = annual ? Math.round(value / 12) : hourly ? Math.round(value * 160) : value;
+                return { salary_min: monthlyValue, salary_max: monthlyValue, currency: "USD" };
+            }
+        }
 
         // 1. Parsing dải USD ($1500 - $2500)
         const usdRangeMatch = rawClean.match(/\$?(\d+)\s*-\s*\$?(\d+)\s*(usd|\$)?/i);

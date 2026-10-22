@@ -1,6 +1,27 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
+function extractExplicitSalary(text) {
+    const cleanText = cheerio.load(text || '').text().replace(/\s+/g, ' ').trim();
+    const salaryPattern = /(?:salary|compensation|pay transparency|pay range|earn(?:s|ing)?|salary range)[^$€£\d]{0,100}((?:[$€£]|(?:USD|EUR|GBP)\s*)\s?\d[\d,.]*(?:\s?[kK])?(?:\s?(?:-|to)\s?(?:[$€£]|(?:USD|EUR|GBP)\s*)?\s?\d[\d,.]*(?:\s?[kK])?)?(?:\s*(?:per year|annually|a year|\/year|per month|monthly))?)/i;
+    const directPattern = /((?:[$€£]|(?:USD|EUR|GBP)\s*)\s?\d[\d,.]*(?:\s?[kK])?(?:\s?(?:-|to)\s?(?:[$€£]|(?:USD|EUR|GBP)\s*)?\s?\d[\d,.]*(?:\s?[kK])?)?(?:\s*(?:per year|annually|a year|\/year|per month|monthly|per hour|hourly))?)/i;
+    const candidates = [
+        ...Array.from(cleanText.matchAll(new RegExp(salaryPattern.source, 'ig'))),
+        ...Array.from(cleanText.matchAll(new RegExp(directPattern.source, 'ig')))
+    ];
+    for (const match of candidates) {
+        const value = match[1] || match[0];
+        const hasPeriod = /per year|annually|a year|\/year|per month|monthly|per hour|hourly/i.test(value);
+        const hasRange = /-| to /i.test(value);
+        const firstAmount = Number.parseFloat(value.replace(/[$€£,\s]/g, '').replace(/[kK].*$/, '000'));
+        const context = cleanText.slice(Math.max(0, match.index - 40), match.index + match[0].length + 40);
+        if (!hasPeriod && !hasRange && firstAmount < 1000) continue;
+        if (/\b(?:million|billion|funding|revenue|valuation)\b/i.test(context)) continue;
+        return value.replace(/\s+/g, ' ').trim();
+    }
+    return null;
+}
+
 // DANH SÁCH BÀI ĐĂNG THẬT 100% TỪ CÁC TẬP ĐOÀN CÔNG NGHỆ THỰC TẾ
 const VERIFIED_REAL_IT_JOBS = [
     {
@@ -359,8 +380,90 @@ class WebScraperEngine {
 // CLASS 2: Real Job Data Provider
 // =====================================================================
 class JobDataGenerator {
+    async fetchSalaryJobs(count = 100) {
+        const feeds = await Promise.all([
+            ...[1, 2, 3].map(page => axios.get(`https://www.arbeitnow.com/api/job-board-api?page=${page}`, { timeout: 20000 })),
+            axios.get('https://jobicy.com/api/v2/remote-jobs?count=100', { timeout: 20000 })
+        ]);
+        const arbeitnowJobs = feeds.slice(0, 3).flatMap(feed => Array.isArray(feed.data && feed.data.data)
+            ? feed.data.data.map(job => ({
+                title: job.title,
+                company_name: job.company_name,
+                city: job.remote ? "Remote" : job.location,
+                description: job.description,
+                source_url: job.url,
+                source_platform: "Arbeitnow Public Job Board"
+            }))
+            : []);
+        const jobicyJobs = Array.isArray(feeds[3].data && feeds[3].data.jobs)
+            ? feeds[3].data.jobs.map(job => ({
+                title: job.jobTitle,
+                company_name: job.companyName,
+                city: job.jobGeo,
+                description: job.jobDescription,
+                source_url: job.url,
+                source_platform: "Jobicy Public Job Board"
+            }))
+            : [];
+
+        const result = [];
+        const seenUrls = new Set();
+        for (const job of [...arbeitnowJobs, ...jobicyJobs]) {
+            const salary = extractExplicitSalary(job.description);
+            if (!salary || !job.title || !job.company_name || !job.source_url || seenUrls.has(job.source_url)) {
+                continue;
+            }
+            seenUrls.add(job.source_url);
+            result.push({
+                title: job.title.trim(),
+                company_name: job.company_name.trim(),
+                city: (job.city || "Remote").trim(),
+                raw_salary: salary,
+                experience_level_raw: "Không yêu cầu cụ thể",
+                source_platform: job.source_platform,
+                source_url: job.source_url,
+                description: cheerio.load(job.description || '').text().replace(/\s+/g, ' ').trim().slice(0, 4000)
+            });
+            if (result.length === count) break;
+        }
+        return result;
+    }
+
+    async fetchActiveJobs(count = 15) {
+        try {
+            const response = await axios.get('https://www.arbeitnow.com/api/job-board-api', {
+                headers: {
+                    "User-Agent": "TechJobAnalytics/1.0 (public job data collector)",
+                    "Accept": "application/json"
+                },
+                timeout: 20000
+            });
+
+            const jobs = Array.isArray(response.data && response.data.data)
+                ? response.data.data
+                : [];
+
+            return jobs
+                .filter(job => job && job.title && job.company_name && job.url)
+                .slice(0, count)
+                .map(job => ({
+                    title: job.title.trim(),
+                    company_name: job.company_name.trim(),
+                    city: job.remote ? "Remote" : (job.location || "Không xác định").trim(),
+                    raw_salary: "Thỏa thuận",
+                    experience_level_raw: "Không yêu cầu cụ thể",
+                    source_platform: "Arbeitnow Public Job Board",
+                    source_url: job.url,
+                    description: cheerio.load(job.description || '').text().replace(/\s+/g, ' ').trim().slice(0, 4000)
+                }));
+        } catch (e) {
+            console.warn(`[JobDataGenerator] Không thể tải feed việc làm công khai: ${e.message}`);
+            return [];
+        }
+    }
+
     generatePostings(count = 15) {
-        return VERIFIED_REAL_IT_JOBS;
+        return VERIFIED_REAL_IT_JOBS.slice(0, count);
     }
 }
 
@@ -386,6 +489,19 @@ class JobDataCollector {
                 return collected;
             }
         }
+        const salaryJobs = await this.generator.fetchSalaryJobs(count);
+        if (salaryJobs.length >= count) {
+            console.log(`[JobDataCollector] Đã lấy ${salaryJobs.length} tin có mức lương công khai.`);
+            return salaryJobs;
+        }
+
+        const activeJobs = await this.generator.fetchActiveJobs(count);
+        if (activeJobs.length > 0) {
+            console.log(`[JobDataCollector] Đã lấy ${activeJobs.length} tin đang hoạt động từ Arbeitnow.`);
+            return activeJobs;
+        }
+
+        console.warn('[JobDataCollector] Feed công khai không khả dụng, dùng dữ liệu fallback trong mã nguồn.');
         return this.generator.generatePostings(count);
     }
 }

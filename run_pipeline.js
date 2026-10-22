@@ -12,7 +12,11 @@ class TechJobDataPipeline {
 
 async function runFullPipeline() {
     const pipeline = new TechJobDataPipeline();
-    await pipeline.run();
+    const requestedCount = Number(process.argv[2] || process.env.JOB_COUNT || 150);
+    if (!Number.isInteger(requestedCount) || requestedCount < 1) {
+        throw new Error('Số lượng tin phải là số nguyên dương. Ví dụ: npm run pipeline -- 100');
+    }
+    await pipeline.run(requestedCount);
 }
 
 if (require.main === module) {

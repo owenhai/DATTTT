@@ -51,16 +51,9 @@ class DatabaseSchemaInitializer {
         if (this.connector.dbEngine === 'postgres' && this.connector.pgPool) {
             const client = await this.connector.pgPool.connect();
             try {
-                await client.query('BEGIN;');
-                await client.query('DELETE FROM job_skills;');
-                await client.query('DELETE FROM jobs;');
-                await client.query('DELETE FROM companies;');
-                await client.query('DELETE FROM skills;');
-                await client.query('DELETE FROM locations;');
-                await client.query('COMMIT;');
+                await client.query('TRUNCATE TABLE job_skills, jobs, companies, skills, locations RESTART IDENTITY CASCADE;');
                 console.log('[DB_Schema] Đã xóa sạch dữ liệu cũ trong các bảng PostgreSQL CSDL.');
             } catch (e) {
-                await client.query('ROLLBACK;');
                 console.error(`[DB_Schema] Lỗi khi xóa bảng PostgreSQL: ${e.message}`);
             } finally {
                 client.release();
@@ -74,6 +67,10 @@ class DatabaseSchemaInitializer {
                 await conn.query('DELETE FROM companies;');
                 await conn.query('DELETE FROM skills;');
                 await conn.query('DELETE FROM locations;');
+                await conn.query('ALTER TABLE companies AUTO_INCREMENT = 1;');
+                await conn.query('ALTER TABLE locations AUTO_INCREMENT = 1;');
+                await conn.query('ALTER TABLE skills AUTO_INCREMENT = 1;');
+                await conn.query('ALTER TABLE jobs AUTO_INCREMENT = 1;');
                 await conn.commit();
                 console.log('[DB_Schema] Đã xóa sạch dữ liệu cũ trong các bảng MySQL CSDL.');
             } catch (e) {
@@ -88,6 +85,9 @@ class DatabaseSchemaInitializer {
             this.connector.sqliteDb.run('DELETE FROM companies;');
             this.connector.sqliteDb.run('DELETE FROM skills;');
             this.connector.sqliteDb.run('DELETE FROM locations;');
+            this.connector.sqliteDb.run(
+                "DELETE FROM sqlite_sequence WHERE name IN ('companies', 'locations', 'skills', 'jobs');"
+            );
             this.connector.saveSqliteFile();
             console.log('[DB_Schema] Đã xóa sạch dữ liệu cũ trong các bảng SQLite CSDL.');
         }

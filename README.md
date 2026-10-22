@@ -65,6 +65,20 @@ Chạy câu lệnh sau trong Terminal để thu thập, làm sạch, chuẩn hó
 npm run pipeline
 ```
 
+Có thể chỉ định số lượng tin cần thu thập. Collector sẽ ưu tiên feed việc làm công khai
+Arbeitnow và tự chuyển sang dữ liệu fallback nếu feed không khả dụng:
+
+```bash
+npm run pipeline -- 100
+```
+
+Khi chạy lại pipeline, dữ liệu cũ được xóa và các mã ID được reset để tin đầu tiên
+nhận `job_id = 1` (các bảng công ty, địa điểm và kỹ năng cũng bắt đầu từ 1).
+
+Pipeline ưu tiên các tin có mức lương công khai từ Arbeitnow và Jobicy. Tin không có
+mức lương rõ ràng sẽ không được chọn trong batch này; giá trị lương năm được đổi sang
+mức tháng bằng phép chia 12, không tự suy đoán khoảng lương.
+
 ---
 
 ### Bước 5: Khởi Chạy Web Dashboard UI
