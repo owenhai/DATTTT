@@ -92,7 +92,7 @@ class SalaryNormalizer {
             ? ({ '$': 'USD', '€': 'EUR', '£': 'GBP', usd: 'USD', eur: 'EUR', gbp: 'GBP' }[currencyMatch[1] || currencyMatch[2].toLowerCase()])
             : 'USD';
         const conversionRate = { USD: 1, EUR: 1.09, GBP: 1.27 }[currency];
-        const range = rawClean.match(/([$€£])?\s*(\d+(?:k)?)\s*(?:-|to)\s*([$€£])?\s*(\d+(?:k)?)/i);
+        const range = rawClean.match(/(?:([$€£]|usd|eur|gbp)\s*)?(\d+(?:k)?)\s*(?:-|to)\s*(?:([$€£]|usd|eur|gbp)\s*)?(\d+(?:k)?)\s*([$€£]|usd|eur|gbp)?/i);
         if (range) {
             const min = amount(range[2]);
             const max = amount(range[4]);
@@ -244,10 +244,22 @@ class ExperienceNormalizer {
             return 'Mid-Level (2-4 yrs)';
         } else if (['senior', '4 - 7', '4-7'].some(k => eLower.includes(k))) {
             return 'Senior (4-7 yrs)';
-        } else if (['lead', 'principal', '7+', 'manager'].some(k => eLower.includes(k))) {
+        } else if ([
+            'lead', 'principal', '7+', 'manager', 'management',
+            'team leader', 'teamleitung', 'head of', 'director',
+            'fachliche führung', 'verantwortung für ein team'
+        ].some(k => eLower.includes(k))) {
             return 'Lead / Manager (7+ yrs)';
         } else {
-            return 'Mid-Level (2-4 yrs)';
+            const yearRange = eLower.match(/(\d+)\s*(?:to|-)\s*(\d+)\s*(?:years?|yrs?|năm)/i);
+            const yearPlus = eLower.match(/(\d+)\s*\+\s*(?:years?|yrs?|năm)/i);
+            if (yearPlus) {
+                return `${yearPlus[1]}+ yrs`;
+            }
+            if (yearRange) {
+                return `${yearRange[1]}-${yearRange[2]} yrs`;
+            }
+            return 'Not Specified';
         }
     }
 }

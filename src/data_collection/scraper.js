@@ -22,6 +22,14 @@ function extractExplicitSalary(text) {
     return null;
 }
 
+function inferExperienceLevel(title, description, sourceLevel = '', tags = []) {
+    const text = `${sourceLevel} ${Array.isArray(tags) ? tags.join(' ') : tags} ${title} ${cheerio.load(description || '').text()}`;
+    const years = text.match(/(\d+)\s*(?:\+|年以上?|-\s*\d+\s*(?:years?|yrs?|năm))/i);
+    if (sourceLevel) return sourceLevel;
+    if (years) return `${years[0]} experience`;
+    return text;
+}
+
 // DANH SÁCH BÀI ĐĂNG THẬT 100% TỪ CÁC TẬP ĐOÀN CÔNG NGHỆ THỰC TẾ
 const VERIFIED_REAL_IT_JOBS = [
     {
@@ -381,16 +389,25 @@ class WebScraperEngine {
 // =====================================================================
 class JobDataGenerator {
     async fetchSalaryJobs(count = 100) {
-        const feeds = await Promise.all([
+        const requests = [
             ...[1, 2, 3].map(page => axios.get(`https://www.arbeitnow.com/api/job-board-api?page=${page}`, { timeout: 20000 })),
             axios.get('https://jobicy.com/api/v2/remote-jobs?count=100', { timeout: 20000 })
-        ]);
+        ];
+        const settled = await Promise.allSettled(requests);
+        const feeds = settled
+            .filter(result => result.status === 'fulfilled')
+            .map(result => result.value);
+        if (feeds.length === 0) {
+            throw new Error('Không tải được các feed việc làm công khai.');
+        }
         const arbeitnowJobs = feeds.slice(0, 3).flatMap(feed => Array.isArray(feed.data && feed.data.data)
             ? feed.data.data.map(job => ({
                 title: job.title,
                 company_name: job.company_name,
                 city: job.remote ? "Remote" : job.location,
                 description: job.description,
+                experience_level_raw: inferExperienceLevel(job.title, job.description, '', job.tags),
+                tags: job.tags || [],
                 source_url: job.url,
                 source_platform: "Arbeitnow Public Job Board"
             }))
@@ -401,6 +418,8 @@ class JobDataGenerator {
                 company_name: job.companyName,
                 city: job.jobGeo,
                 description: job.jobDescription,
+                experience_level_raw: inferExperienceLevel(job.jobTitle, job.jobDescription, job.jobLevel, job.jobIndustry),
+                tags: job.jobIndustry || [],
                 source_url: job.url,
                 source_platform: "Jobicy Public Job Board"
             }))
@@ -419,7 +438,7 @@ class JobDataGenerator {
                 company_name: job.company_name.trim(),
                 city: (job.city || "Remote").trim(),
                 raw_salary: salary,
-                experience_level_raw: "Không yêu cầu cụ thể",
+                experience_level_raw: job.experience_level_raw,
                 source_platform: job.source_platform,
                 source_url: job.source_url,
                 description: cheerio.load(job.description || '').text().replace(/\s+/g, ' ').trim().slice(0, 4000)

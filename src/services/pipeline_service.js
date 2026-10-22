@@ -110,7 +110,7 @@ class PipelineService {
                 salary_max: salaryInfo.salary_max,
                 salary_currency: salaryInfo.currency,
                 raw_salary: item.raw_salary,
-                experience_level: normExp || "Mid-Level (2-4 yrs)",
+                experience_level: normExp || "Not Specified",
                 job_type: "Full-time",
                 source_url: item.source_url,
                 source_platform: item.source_platform || "URL Crawler Tự động",
